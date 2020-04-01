@@ -94,84 +94,47 @@ search = re.compile("^.*全県相談件数.*$")
 qua_num = soup.find_all("p", text=search)[0].string
 qua_num = int(re.sub("\\D", "", qua_num))
 
+
+### 患者数の取得 ###
+res = requests.get("https://www.pref.yamaguchi.lg.jp/cms/a15200/kansensyou/koronahassei.html")
+res.encoding = res.apparent_encoding	# 日本語文字化け対応
+soup2 = BeautifulSoup(res.content, "html.parser")
+search2 = re.compile("\d{1,3}例")
+pat_num = soup2.find_all("h2", text=search2)[0].string
+pat_num = int(re.sub("\\D", "", pat_num[:3]))
+print(pat_num)
+
+
 # 各更新項目の既知データをtemplateから取得
 patients_summary = template['patients_summary']['data']
 inspection_summary = template['inspections_summary']['data']
 quarents = template['querents']['data']
 
+pat_list = [p["小計"] for p in patients_summary]
+pat_numago = sum(pat_list)
+pat_ldate = datetime.datetime.strptime(patients_summary[-1]["日付"][:10], '%Y-%m-%d')	# 各データの更新日
+pat_ldate = datetime.date(pat_ldate.year, pat_ldate.month, pat_ldate.day)
+if pat_ldate == yesterday_datetime:	# 昨日のログがあれば
+	print("患者の今日のログあり")
+	pat_numago -= patients_summary[-1]["小計"]
+pat_num -= pat_numago
+
+print(pat_num)
+
 # データの更新
 inspection_summary = check_update(inspection_summary, ins_num, yesterday_datetime, yesterday)
 quarents = check_update(quarents, qua_num, yesterday_datetime, yesterday)
+patients_summary = check_update(patients_summary, pat_num, yesterday_datetime, yesterday)
+
 
 # 出力用jsonデータの構築
 template["lastUpdate"] = last_update_date
 template['inspections_summary']['date'] = last_update_date
 template['inspections_summary']['data'] = inspection_summary
-template['querents']['date'] = last_update_date
-template['querents']['data'] = quarents
-
-# jsonファイルに出力
-export_json(obj=template, filename="./data/data.json")
-
-"""
-print(elem.attrs['href'])
-res = requests.get(elem.attrs['href'])
-res.encoding = res.apparent_encoding
-soup = BeautifulSoup(res.content, "html.parser")
-
-pat_num = get_patients(soup)
-ins_num = get_inspections(soup)
-qua_num = get_quarents(soup)
-
-yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-t_stamp = '{0:%Y-%m-%d}'.format(yesterday)
-
-# これまでの陽性者の合計を求める
-total_patients_num = 0
-for patient in template['patients_summary']['data']:
-   total_patients_num += patient['小計']
-
-# 今日の陽性者数を求める
-today_pat_num = pat_num - total_patients_num
-
-# 各項目に更新内容を追加
-patients_summary.append({
-    "日付": t_stamp + "T08:00:00.000Z",
-    "小計": today_pat_num
-})
-
-inspection_summary.append({
-    "日付": t_stamp + "T08:00:00.000Z",
-    "小計": ins_num
-})
-
-quarents.append({
-    "日付": t_stamp + "T08:00:00.000Z",
-    "曜日": DAYS_OF_WEEK[yesterday.weekday()],
-    "9-17時": 1688,
-    "17-翌9時": 130,
-    "date": t_stamp,
-    "w": 2,
-    "short_date": t_stamp[5:7]+ "/" + t_stamp[8:10] ,
-    "小計": qua_num
-})
-
-last_update_date = "{0:%Y/%m/%d 8:00}".format(datetime.datetime.now())
-
-print("陽性数 ： ", get_patients(soup))
-print("PCR検査数 ： ", get_inspections(soup))
-print("相談件数 ： ", get_quarents(soup))
-print("記事のタイムスタンプ ： ", get_timestamp(soup))
-
-# 出力用jsonデータの構築
-template["lastUpdate"] = last_update_date
 template['querents']['date'] = last_update_date
 template['querents']['data'] = quarents
 template['patients_summary']['date'] = last_update_date
 template['patients_summary']['data'] = patients_summary
-template['inspections_summary']['date'] = last_update_date
-template['inspections_summary']['data'] = inspection_summary
 
 # jsonファイルに出力
 export_json(obj=template, filename="./data/data.json")
-"""
