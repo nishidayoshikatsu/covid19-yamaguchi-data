@@ -91,35 +91,52 @@ if not web_date:	# 日付データがとれなければ終了
     sys.exit()
 
 web_date = datetime.date(web_date[1], web_date[2], web_date[3])
-t_stamp = datetime.date.today()
 
-update_date = t_stamp - web_date
-
-#if update_date.days != 0:	# 更新日が今日でなければ終了
-#    sys.exit()
+update_date = datetime.date.today() - web_date
+yesterday_datetime = datetime.date.today() - datetime.timedelta(days=1)
+yesterday = '{0:%Y-%m-%d}'.format(yesterday_datetime)
+print(yesterday)
 
 print("県データ更新日: " + str(web_date))
 
 ### 検査件数の取得 ###
 search = re.compile("^(?=.*PCR検査した検体総数).*$")
 ins_num = soup.find_all("p", text=search)[0].string
-ins_num = re.sub("\\D", "", ins_num)
+ins_num = int(re.sub("\\D", "", ins_num))
+print(ins_num)
 
 # 各更新項目の既知データをtemplateから取得
 patients_summary = template['patients_summary']['data']
 inspection_summary = template['inspections_summary']['data']
 quarents = template['querents']['data']
 
-#inspection_summary.append({
-#    "日付": t_stamp + "T08:00:00.000Z",
-#    "小計": ins_num
-#})
+log_date = datetime.datetime.strptime(inspection_summary[-1]["日付"][:10], '%Y-%m-%d')	# 各データの更新日
+log_date = datetime.date(log_date.year, log_date.month, log_date.day)
+
+print(int(inspection_summary[-1]["小計"]))
+
+print(log_date, yesterday_datetime)
+if log_date == yesterday_datetime:	# 昨日のログがある場合
+    print("昨日のログは記入済み")
+    if ins_num != int(inspection_summary[-1]["小計"]):	# 昨日のログの数字と最新データの数字が異なる場合
+        print("新しいデータを更新")
+        inspection_summary[-1]["小計"] = ins_num
+    else:
+        print("データは更新済みです")
+else:
+    print("昨日のログを記入します")
+    inspection_summary.append({
+        "日付": yesterday + "T08:00:00.000Z",
+        "小計": int(inspection_summary[-2]["小計"])
+    })
 
 last_update_date = "{0:%Y/%m/%d %H:%M}".format(datetime.datetime.now(JST))
-print(last_update_date)
+print("最終更新日： " + str(last_update_date))
 
 # 出力用jsonデータの構築
 template["lastUpdate"] = last_update_date
+template['inspections_summary']['date'] = last_update_date
+template['inspections_summary']['data'] = inspection_summary
 
 # jsonファイルに出力
 export_json(obj=template, filename="./data/data.json")
