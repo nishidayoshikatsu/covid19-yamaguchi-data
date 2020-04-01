@@ -4,6 +4,7 @@ import datetime
 from bs4 import BeautifulSoup
 import jaconv
 import json
+import sys
 
 YEAR = 2020 #現状は2020年で決め打ち
 DAYS_OF_WEEK = ["月","火","水","木","金","土","日"]
@@ -71,22 +72,53 @@ template = import_json("./data/data.json")
 export_json(obj=template, filename="./data/data_template.json")
 
 # 報道発表ページで「新型コロナウイルス感染症にかかる」で検索した際の結果を利用
-res = requests.get("https://webnavi.pref.yamaguchi.lg.jp/press/?q=%E6%96%B0%E5%9E%8B%E3%82%B3%E3%83%AD%E3%83%8A%E3%82%A6%E3%82%A4%E3%83%AB%E3%82%B9%E6%84%9F%E6%9F%93%E7%97%87%E3%81%AB%E3%81%8B%E3%81%8B%E3%82%8B")
-res.encoding = res.apparent_encoding 
+res = requests.get("https://www.pref.yamaguchi.lg.jp/cms/a15200/kansensyou/ncorona.html")
+res.encoding = res.apparent_encoding
 soup = BeautifulSoup(res.content, "html.parser")
 
-search = re.compile("^(?=.*新型コロナウイルス感染症にかかる相談件数等について).*$")
-news_link_element = soup.find_all("a", text=search) # 個別記事のaタグを取り出す
+# 更新日の取得
+last_update_date = "{0:%Y/%m/%d %H:%M}".format(datetime.datetime.now())
+
+search = re.compile("^.*$")
+update = soup.find_all("span", text=search)[0].string
+
+date_pattern = re.compile(r"[0-9]{1,4}")
+web_date = re.findall(date_pattern, update)
+web_date = list(map(int, web_date))
+
+if not web_date:	# 日付データがとれなければ終了
+    sys.exit()
+
+print("正規表現")
+print(last_update_date)
+print(update)
+print(web_date[1:])
+
+web_date = datetime.date(web_date[1], web_date[2], web_date[3])
+print(web_date)
+
+
+# 検査件数の取得
+search = re.compile("^(?=.*PCR検査した検体総数).*$")
+ins_num = soup.find_all("p", text=search)[0].string
+ins_num = re.sub("\\D", "", ins_num)
 
 # 各更新項目の既知データをtemplateから取得
 patients_summary = template['patients_summary']['data']
 inspection_summary = template['inspections_summary']['data']
 quarents = template['querents']['data']
 
-# 最新の記事のaタグのhref属性からスクレイピングを行う
-# for elem in news_link_element:
-elem = news_link_element[0]
 
+yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+t_stamp = '{0:%Y-%m-%d}'.format(yesterday)
+print(yesterday)
+
+#inspection_summary.append({
+#    "日付": t_stamp + "T08:00:00.000Z",
+#    "小計": ins_num
+#})
+
+"""
 print(elem.attrs['href'])
 res = requests.get(elem.attrs['href'])
 res.encoding = res.apparent_encoding 
@@ -147,3 +179,4 @@ template['inspections_summary']['data'] = inspection_summary
 
 # jsonファイルに出力
 export_json(obj=template, filename="./data/data.json")
+"""
