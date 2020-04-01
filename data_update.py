@@ -39,7 +39,7 @@ def check_update(jsondata, content, yesterday_datetime, yesterday):
 		print("昨日のログを記入します")
 		jsondata.append({
 			"日付": yesterday + "T08:00:00.000Z",
-			"小計": int(jsondata[-2]["小計"])
+			"小計": int(jsondata[-1]["小計"])
 		})
 
 	return jsondata
@@ -90,7 +90,9 @@ ins_num = int(re.sub("\\D", "", ins_num))
 #ins_day = datetime.date(2018+ins_day[0], ins_day[1], ins_day[2])
 
 ### 相談件数の取得 ###
-
+search = re.compile("^.*全県相談件数.*$")
+qua_num = soup.find_all("p", text=search)[0].string
+qua_num = int(re.sub("\\D", "", qua_num))
 
 # 各更新項目の既知データをtemplateから取得
 patients_summary = template['patients_summary']['data']
@@ -99,11 +101,14 @@ quarents = template['querents']['data']
 
 # データの更新
 inspection_summary = check_update(inspection_summary, ins_num, yesterday_datetime, yesterday)
+quarents = check_update(quarents, qua_num, yesterday_datetime, yesterday)
 
 # 出力用jsonデータの構築
 template["lastUpdate"] = last_update_date
 template['inspections_summary']['date'] = last_update_date
 template['inspections_summary']['data'] = inspection_summary
+template['querents']['date'] = last_update_date
+template['querents']['data'] = quarents
 
 # jsonファイルに出力
 export_json(obj=template, filename="./data/data.json")
