@@ -6,15 +6,12 @@ import jaconv
 import json
 import sys
 
-YEAR = 2020 #現状は2020年で決め打ち
-DAYS_OF_WEEK = ["月","火","水","木","金","土","日"]
-
 # import json(template)
 def import_json(filename):
     with open(filename, "r") as f:
         dict = json.load(f)
         return dict
-    
+
 # export json
 def export_json(obj, filename):
     with open(filename, "w") as f:
@@ -27,45 +24,25 @@ def export_json(obj, filename):
             separators=None
             )
 
-def get_patients(s): # 陽性数を返す
-    search = re.compile("^(?=.*結果：陰性).*$")
-    inspections_element = s.find("p", text=search) # 変数searchで指定する正規表現に一致するpタグを取り出す
+def check_update(jsondata, content, yesterday_datetime, yesterday):
+	log_date = datetime.datetime.strptime(jsondata[-1]["日付"][:10], '%Y-%m-%d')	# 各データの更新日
+	log_date = datetime.date(log_date.year, log_date.month, log_date.day)
 
-    inspections = re.findall(r'[0-9]+', jaconv.z2h(inspections_element.text.replace("，", ""), kana=False, digit=True, ascii=True))  # 対象のpタグから数値を取り出す
+	if log_date == yesterday_datetime:	# 昨日のログがある場合
+		print("昨日のログは記入済み")
+		if content != int(jsondata[-1]["小計"]):	# 昨日のログの数字と最新データの数字が異なる場合
+			print("新しいデータを更新")
+			jsondata[-1]["小計"] = content	# 上書き
+		else:
+			print("データは更新済みです")
+	else:	# 昨日のログがない場合（）
+		print("昨日のログを記入します")
+		jsondata.append({
+			"日付": yesterday + "T08:00:00.000Z",
+			"小計": int(jsondata[-2]["小計"])
+		})
 
-    patients_num = int(inspections[2])  if len(inspections) > 2 else 0 #県のサイトでは陽性が出ていないときは陰性の数しか書かれていないため
-    
-    return patients_num
-
-def get_inspections(s): # PCR検査数を返す
-    search = re.compile("^(?=.*PCR検査した検体総数).*$")
-    pcr_inspections_element = s.find("p", text=search) # 変数searchで指定する正規表現に一致するpタグを取り出す
-
-    pcr_inspections = re.findall(r'[0-9]+', jaconv.z2h(pcr_inspections_element.text.replace("，", ""), kana=False, digit=True, ascii=True))  # 対象のpタグから数値を取り出す
-
-    pcr_inspection_num = int(pcr_inspections[0])
-    
-    return pcr_inspection_num
-
-def get_quarents(s): # 相談件数を返す
-    search = re.compile("^(全県相談件数：).*$")
-    quarents_element = s.find("p", text=search) # 変数searchで指定する正規表現に一致するpタグを取り出す
-
-    quarents = re.findall(r'[0-9]+', jaconv.z2h(quarents_element.text.replace("，", ""), kana=False, digit=True, ascii=True))  # 対象のpタグから数値を取り出す
-
-    quarents_num = int(quarents[0])
-
-    return quarents_num
-
-def get_timestamp(s): # その記事内のタイムスタンプを返す、現在は未使用
-    search = re.compile("^(?=.*までの件数は次のとおりです).*$")
-    date_element = s.find("p", text=search)
-
-    date = re.findall(r'[0-9]+', jaconv.z2h(date_element.text.replace("，", ""), kana=False, digit=True, ascii=True)) # 対象のpタグから数値を取り出す
-
-    time_stamp = "{}-{}-{}T08:00:00.000Z".format(YEAR, date[0].zfill(2), date[1].zfill(2)) # 現状は8時決め打ちで、json記載のタイムスタンプに整形している
-    
-    return time_stamp
+	return jsondata
 
 # 現在のdata.jsonをバックアップしてdata_template.jsonに保存する
 template = import_json("./data/data.json")
@@ -80,58 +57,48 @@ res.encoding = res.apparent_encoding	# 日本語文字化け対応
 soup = BeautifulSoup(res.content, "html.parser")
 
 ### 更新日の取得 ###
-search = re.compile("^.*$")
-update = soup.find_all("span", text=search)[0].string	# 更新日の範囲を取得
+#search = re.compile("^.*$")
+#update = soup.find_all("span", text=search)[0].string	# 更新日の範囲を取得
 
 date_pattern = re.compile(r"[0-9]{1,4}")
-web_date = re.findall(date_pattern, update)
-web_date = list(map(int, web_date))
+#web_date = re.findall(date_pattern, update)
+#web_date = list(map(int, web_date))
 
-if not web_date:	# 日付データがとれなければ終了
-    sys.exit()
+#if not web_date:	# 日付データがとれなければ終了
+#    sys.exit()
 
-web_date = datetime.date(web_date[1], web_date[2], web_date[3])
+#web_date = datetime.date(web_date[1], web_date[2], web_date[3])
 
-update_date = datetime.date.today() - web_date
+#update_date = datetime.date.today() - web_date
 yesterday_datetime = datetime.date.today() - datetime.timedelta(days=1)
 yesterday = '{0:%Y-%m-%d}'.format(yesterday_datetime)
-print(yesterday)
 
-print("県データ更新日: " + str(web_date))
+### 最終更新日の取得 ###
+last_update_date = "{0:%Y/%m/%d %H:%M}".format(datetime.datetime.now(JST))
+print("最終更新日： " + str(last_update_date))
 
 ### 検査件数の取得 ###
 search = re.compile("^(?=.*PCR検査した検体総数).*$")
 ins_num = soup.find_all("p", text=search)[0].string
 ins_num = int(re.sub("\\D", "", ins_num))
-print(ins_num)
+# 検査件数の集計日を取得
+#search = re.compile("^.*○県内のPCR検査実施件数.*$")
+#ins_day = soup.find_all("p", text=search)[0].string
+#date_pattern = re.compile(r"\d{1,4}")
+#ins_day = re.findall(date_pattern, ins_day)
+#ins_day = list(map(int, ins_day))
+#ins_day = datetime.date(2018+ins_day[0], ins_day[1], ins_day[2])
+
+### 相談件数の取得 ###
+
 
 # 各更新項目の既知データをtemplateから取得
 patients_summary = template['patients_summary']['data']
 inspection_summary = template['inspections_summary']['data']
 quarents = template['querents']['data']
 
-log_date = datetime.datetime.strptime(inspection_summary[-1]["日付"][:10], '%Y-%m-%d')	# 各データの更新日
-log_date = datetime.date(log_date.year, log_date.month, log_date.day)
-
-print(int(inspection_summary[-1]["小計"]))
-
-print(log_date, yesterday_datetime)
-if log_date == yesterday_datetime:	# 昨日のログがある場合
-    print("昨日のログは記入済み")
-    if ins_num != int(inspection_summary[-1]["小計"]):	# 昨日のログの数字と最新データの数字が異なる場合
-        print("新しいデータを更新")
-        inspection_summary[-1]["小計"] = ins_num
-    else:
-        print("データは更新済みです")
-else:
-    print("昨日のログを記入します")
-    inspection_summary.append({
-        "日付": yesterday + "T08:00:00.000Z",
-        "小計": int(inspection_summary[-2]["小計"])
-    })
-
-last_update_date = "{0:%Y/%m/%d %H:%M}".format(datetime.datetime.now(JST))
-print("最終更新日： " + str(last_update_date))
+# データの更新
+inspection_summary = check_update(inspection_summary, ins_num, yesterday_datetime, yesterday)
 
 # 出力用jsonデータの構築
 template["lastUpdate"] = last_update_date
