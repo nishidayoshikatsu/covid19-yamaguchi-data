@@ -71,16 +71,17 @@ def get_timestamp(s): # その記事内のタイムスタンプを返す、現�
 template = import_json("./data/data.json")
 export_json(obj=template, filename="./data/data_template.json")
 
+# タイムゾーンの生成
+JST = datetime.timezone(datetime.timedelta(hours=+9), 'JST')
+
 # 報道発表ページで「新型コロナウイルス感染症にかかる」で検索した際の結果を利用
 res = requests.get("https://www.pref.yamaguchi.lg.jp/cms/a15200/kansensyou/ncorona.html")
-res.encoding = res.apparent_encoding
+res.encoding = res.apparent_encoding	# 日本語文字化け対応
 soup = BeautifulSoup(res.content, "html.parser")
 
-# 更新日の取得
-last_update_date = "{0:%Y/%m/%d %H:%M}".format(datetime.datetime.now())
-
+### 更新日の取得 ###
 search = re.compile("^.*$")
-update = soup.find_all("span", text=search)[0].string
+update = soup.find_all("span", text=search)[0].string	# 更新日の範囲を取得
 
 date_pattern = re.compile(r"[0-9]{1,4}")
 web_date = re.findall(date_pattern, update)
@@ -89,16 +90,17 @@ web_date = list(map(int, web_date))
 if not web_date:	# 日付データがとれなければ終了
     sys.exit()
 
-print("正規表現")
-print(last_update_date)
-print(update)
-print(web_date[1:])
-
 web_date = datetime.date(web_date[1], web_date[2], web_date[3])
-print(web_date)
+t_stamp = datetime.date.today()
 
+update_date = t_stamp - web_date
 
-# 検査件数の取得
+#if update_date.days != 0:	# 更新日が今日でなければ終了
+#    sys.exit()
+
+print("県データ更新日: " + str(web_date))
+
+### 検査件数の取得 ###
 search = re.compile("^(?=.*PCR検査した検体総数).*$")
 ins_num = soup.find_all("p", text=search)[0].string
 ins_num = re.sub("\\D", "", ins_num)
@@ -108,20 +110,24 @@ patients_summary = template['patients_summary']['data']
 inspection_summary = template['inspections_summary']['data']
 quarents = template['querents']['data']
 
-
-yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-t_stamp = '{0:%Y-%m-%d}'.format(yesterday)
-print(yesterday)
-
 #inspection_summary.append({
 #    "日付": t_stamp + "T08:00:00.000Z",
 #    "小計": ins_num
 #})
 
+last_update_date = "{0:%Y/%m/%d %H:%M}".format(datetime.datetime.now(JST))
+print(last_update_date)
+
+# 出力用jsonデータの構築
+template["lastUpdate"] = last_update_date
+
+# jsonファイルに出力
+export_json(obj=template, filename="./data/data.json")
+
 """
 print(elem.attrs['href'])
 res = requests.get(elem.attrs['href'])
-res.encoding = res.apparent_encoding 
+res.encoding = res.apparent_encoding
 soup = BeautifulSoup(res.content, "html.parser")
 
 pat_num = get_patients(soup)
