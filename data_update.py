@@ -75,7 +75,6 @@ yesterday = '{0:%Y-%m-%d}'.format(yesterday_datetime)
 
 ### 最終更新日の取得 ###
 last_update_date = "{0:%Y/%m/%d %H:%M}".format(datetime.datetime.now(JST))
-print("最終更新日： " + str(last_update_date))
 
 ### 検査件数の取得 ###
 search = re.compile("^(?=.*PCR検査した検体総数).*$")
@@ -102,7 +101,6 @@ soup2 = BeautifulSoup(res.content, "html.parser")
 search2 = re.compile("\d{1,3}例")
 pat_num = soup2.find_all("h2", text=search2)[0].string
 pat_num = int(re.sub("\\D", "", pat_num[:3]))
-print(pat_num)
 
 
 # 各更新項目の既知データをtemplateから取得
@@ -119,12 +117,17 @@ if pat_ldate == yesterday_datetime:	# 昨日のログがあれば
 	pat_numago -= patients_summary[-1]["小計"]
 pat_num -= pat_numago
 
-print(pat_num)
-
 # データの更新
 inspection_summary = check_update(inspection_summary, ins_num, yesterday_datetime, yesterday)
 quarents = check_update(quarents, qua_num, yesterday_datetime, yesterday)
 patients_summary = check_update(patients_summary, pat_num, yesterday_datetime, yesterday)
+
+print("="*10)
+print("最終更新日： " + str(last_update_date))
+print("患者数: " + str(pat_num))
+print("検査件数: " + str(qua_num))
+print("相談件数: " + str(ins_num))
+print("="*10)
 
 
 # 出力用jsonデータの構築
@@ -135,6 +138,7 @@ template['querents']['date'] = last_update_date
 template['querents']['data'] = quarents
 template['patients_summary']['date'] = last_update_date
 template['patients_summary']['data'] = patients_summary
+template['patients']['date'] = last_update_date
 
 # jsonファイルに出力
 export_json(obj=template, filename="./data/data.json")
