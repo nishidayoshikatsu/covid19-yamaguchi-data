@@ -93,7 +93,7 @@ search = re.compile("^.*全県相談件数.*$")
 qua_num = soup.find_all("p", text=search)[0].string
 qua_num = int(re.sub("\\D", "", qua_num))
 
-
+"""
 ### 患者数の取得 ###
 res = requests.get("https://www.pref.yamaguchi.lg.jp/cms/a15200/kansensyou/koronahassei.html")
 res.encoding = res.apparent_encoding	# 日本語文字化け対応
@@ -101,6 +101,7 @@ soup2 = BeautifulSoup(res.content, "html.parser")
 search2 = re.compile("\d{1,3}例")
 pat_num = soup2.find_all("h2", text=search2)[0].string
 pat_num = int(re.sub("\\D", "", pat_num[:3]))
+"""
 
 
 # 各更新項目の既知データをtemplateから取得
@@ -108,6 +109,7 @@ patients_summary = template['patients_summary']['data']
 inspection_summary = template['inspections_summary']['data']
 quarents = template['querents']['data']
 
+"""
 pat_list = [p["小計"] for p in patients_summary]
 pat_numago = sum(pat_list)
 pat_ldate = datetime.datetime.strptime(patients_summary[-1]["日付"][:10], '%Y-%m-%d')	# 各データの更新日
@@ -116,11 +118,12 @@ if pat_ldate == yesterday_datetime:	# 昨日のログがあれば
 	print("患者の今日のログあり")
 	pat_numago -= patients_summary[-1]["小計"]
 pat_num -= pat_numago
+"""
 
 # データの更新
 inspection_summary = check_update(inspection_summary, ins_num, yesterday_datetime, yesterday)
 quarents = check_update(quarents, qua_num, yesterday_datetime, yesterday)
-patients_summary = check_update(patients_summary, pat_num, yesterday_datetime, yesterday)
+#patients_summary = check_update(patients_summary, pat_num, yesterday_datetime, yesterday)
 
 print("="*10)
 print("最終更新日： " + str(last_update_date))
