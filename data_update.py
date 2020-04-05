@@ -124,7 +124,7 @@ patients_summary = check_update(patients_summary, pat_num, yesterday_datetime, y
 
 print("="*10)
 print("最終更新日： " + str(last_update_date))
-print("患者数: " + str(pat_num))
+#print("患者数: " + str(pat_num))
 print("検査件数: " + str(qua_num))
 print("相談件数: " + str(ins_num))
 print("="*10)
@@ -137,7 +137,7 @@ template['inspections_summary']['data'] = inspection_summary
 template['querents']['date'] = last_update_date
 template['querents']['data'] = quarents
 template['patients_summary']['date'] = last_update_date
-template['patients_summary']['data'] = patients_summary
+#template['patients_summary']['data'] = patients_summary
 template['patients']['date'] = last_update_date
 
 # jsonファイルに出力
