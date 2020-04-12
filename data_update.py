@@ -44,6 +44,26 @@ def check_update(jsondata, content, yesterday_datetime, yesterday):
 
 	return jsondata
 
+def check_update2(jsondata):
+	log_date = datetime.datetime.strptime(jsondata[-1]["日付"][:10], '%Y-%m-%d')	# 各データの更新日
+	log_date = datetime.date(log_date.year, log_date.month, log_date.day)
+
+	if log_date == datetime.date.today():	# 今日のログがある場合
+		print("今日のログは記入済み")
+		#if content != int(jsondata[-1]["小計"]):	# 昨日のログの数字と最新データの数字が異なる場合
+		#	print("新しいデータを更新")
+		#	jsondata[-1]["小計"] = content	# 上書き
+		#else:
+		#	print("データは更新済みです")
+	else:	# 今日のログがない場合
+		print("今日のログを記入します")
+		jsondata.append({
+			"日付": '{0:%Y-%m-%d}'.format(datetime.date.today()) + "T08:00:00.000Z",
+			"小計": 0
+		})
+
+	return jsondata
+
 # 現在のdata.jsonをバックアップしてdata_template.jsonに保存する
 template = import_json("./data/data.json")
 export_json(obj=template, filename="./data/data_template.json")
@@ -123,7 +143,7 @@ pat_num -= pat_numago
 # データの更新
 inspection_summary = check_update(inspection_summary, ins_num, yesterday_datetime, yesterday)
 quarents = check_update(quarents, qua_num, yesterday_datetime, yesterday)
-#patients_summary = check_update(patients_summary, pat_num, yesterday_datetime, yesterday)
+patients_summary = check_update2(patients_summary)
 
 print("="*10)
 print("最終更新日： " + str(last_update_date))
