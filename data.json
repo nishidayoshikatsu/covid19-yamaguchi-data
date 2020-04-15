@@ -799,5 +799,23 @@
                 "小計": 967
             }
         ]
+	},
+	"main_summary": {
+        "attr": "陽性患者数",
+        "value": 25,
+        "children": [
+            {
+                "attr": "入院中",
+                "value": 20
+            },
+            {
+                "attr": "退院",
+                "value": 5
+            },
+            {
+                "attr": "死亡",
+                "value": 0
+            }
+        ]
     }
 }
