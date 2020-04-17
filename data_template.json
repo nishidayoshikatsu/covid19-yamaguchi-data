@@ -842,15 +842,15 @@
     },
     "main_summary": {
         "attr": "検査実施人数",
-        "value": 773,
+        "value": 977,
         "children": [
             {
                 "attr": "陽性患者数",
-                "value": 25,
+                "value": 29,
                 "children": [
                     {
                         "attr": "入院中",
-                        "value": 20
+                        "value": 24
                     },
                     {
                         "attr": "退院",
